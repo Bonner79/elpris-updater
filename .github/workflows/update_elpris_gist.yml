@@ -2,7 +2,7 @@ name: Update Elpris Gist
 
 on:
   schedule:
-    - cron: '10 0 * * *'  # Runs every day at 00:10 UTC (02:10 in Sweden during DST)
+    - cron: '10 0 * * *'  # Runs daily at 00:10 UTC
   workflow_dispatch:
 
 jobs:
@@ -25,7 +25,8 @@ jobs:
           GIST_ID: 38a1294a14afc7b05553c2658576a721
           GITHUB_TOKEN: ${{ secrets.GH_PERSONAL_TOKEN }}
         run: |
-          echo "import requests, json, os
+          cat <<EOF > update.py
+import requests, json, os
 from datetime import datetime, timedelta
 
 def get_swedish_date():
@@ -64,5 +65,5 @@ gist['files'][filename]['content'] = json.dumps(payload)
 res = requests.patch(gist_url, headers=headers, json={ 'files': gist['files'] })
 res.raise_for_status()
 print('Gist updated:', payload)
-" > update.py
+EOF
           python update.py
