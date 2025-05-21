@@ -2,7 +2,7 @@ name: Update Elpris Gist
 
 on:
   schedule:
-    - cron: '10 0 * * *'  # Kör varje dag kl. 00:10 UTC (02:10 svensk tid vid sommartid)
+    - cron: '10 0 * * *'  # Kör varje dag kl. 00:10 UTC (02:10 svensk tid)
   workflow_dispatch:
 
 jobs:
