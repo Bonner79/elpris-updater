@@ -55,5 +55,14 @@ payload = {
     'hours': cheapest,
     'updated': datetime.now().strftime('%Y-%m-%d %H:%M')
 }
-gist_url = f'https://api.github.com/gists/{os.environ['GIST_ID']}'
-headers = {'Authorization': f'token {os.environ['
+gist_url = f'https://api.github.com/gists/{os.environ["GIST_ID"]}'
+headers = {'Authorization': f'token {os.environ["GITHUB_TOKEN"]}'}
+r = requests.get(gist_url, headers=headers)
+r.raise_for_status()
+gist = r.json()
+filename = list(gist['files'].keys())[0]
+gist['files'][filename]['content'] = json.dumps(payload)
+res = requests.patch(gist_url, headers=headers, json={ 'files': gist['files'] })
+res.raise_for_status()
+print('Gist updated:', payload)
+"
