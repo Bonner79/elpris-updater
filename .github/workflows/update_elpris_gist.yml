@@ -23,7 +23,7 @@ jobs:
       - name: Run update script
         env:
           GIST_ID: 38a1294a14afc7b05553c2658576a721
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PERSONAL_TOKEN }}
         run: |
           python -c "
 import requests, json
@@ -56,7 +56,7 @@ payload = {
     'updated': datetime.now().strftime('%Y-%m-%d %H:%M')
 }
 gist_url = f'https://api.github.com/gists/${{GIST_ID}}'
-headers = {'Authorization': f'token ${{{{ secrets.GITHUB_TOKEN }}}}'}
+headers = {'Authorization': f'token ${{{{ secrets.GH_PERSONAL_TOKEN }}}}'}
 r = requests.get(gist_url, headers=headers)
 r.raise_for_status()
 gist = r.json()
