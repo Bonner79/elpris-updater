@@ -55,8 +55,9 @@ payload = {
     'hours': cheapest,
     'updated': datetime.now().strftime('%Y-%m-%d %H:%M')
 }
-gist_url = f'https://api.github.com/gists/${{GIST_ID}}'
-headers = {'Authorization': f'token ${{{{ secrets.GH_PERSONAL_TOKEN }}}}'}
+gist_url = f'https://api.github.com/gists/{os.environ["GIST_ID"]}'
+import os
+headers = {'Authorization': f'token {os.environ["GITHUB_TOKEN"]}'}
 r = requests.get(gist_url, headers=headers)
 r.raise_for_status()
 gist = r.json()
