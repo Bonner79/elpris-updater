@@ -1,7 +1,7 @@
 import requests, json, os
 from datetime import datetime, timedelta
 
-BLOCK_SIZE = 1  # <-- Ändra till 2 eller 3 i de andra filerna
+BLOCK_SIZE = 2  # rätt blockstorlek
 
 def get_swedish_date():
     now = datetime.utcnow()
@@ -33,7 +33,7 @@ for entry in data:
 best_start = None
 best_sum = float("inf")
 
-for start in range(0, 24 - BLOCK_SIZE + 2):
+for start in range(0, 24 - BLOCK_SIZE + 1):  # ← fixat här
     try:
         prices = [hour_prices[start + i] for i in range(BLOCK_SIZE)]
         total = sum(prices)
