@@ -22,4 +22,4 @@ jobs:
           git config --global user.email "keepalive@github"
           git add .keepalive
           git commit -m "Keepalive update" || echo "No changes to commit"
-          git push https://Bonner79:${{ secrets.GH_PAT }}@github.com/Bonner79/elpris-updater.git HEAD:main
+          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/Bonner79/elpris-updater.git HEAD:main
