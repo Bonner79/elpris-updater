@@ -1,0 +1,24 @@
+name: Keep Repository Alive
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Kör varje söndag kl 02:00
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Update .keepalive file
+        run: echo "Last updated: $(date)" > .keepalive
+
+      - name: Commit and push
+        run: |
+          git config --global user.name "keepalive-bot"
+          git config --global user.email "keepalive@github"
+          git add .keepalive
+          git commit -m "Keepalive update"
+          git push https://Bonner79:${{ secrets.GH_PAT }}@github.com/Bonner79/elpris-updater.git HEAD:main
