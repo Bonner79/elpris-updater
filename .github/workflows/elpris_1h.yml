@@ -1,24 +1,27 @@
-name: Elpris 1H updater
+name: Elpris 1H Updater
 
 on:
   schedule:
-    - cron: '0 4 * * *'  # Kör varje dag kl 04:00
+    - cron: '5 3 * * *'  # Varje dag kl 03:05
   workflow_dispatch:
 
 jobs:
   run-script:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
-      - name: Set up Python
+
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - name: Install dependencies
+
+      - name: Install requests
         run: pip install requests
+
       - name: Run elpris_1h.py
         env:
           GIST_ID: ${{ secrets.GIST_ID_1H }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN_1H }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN_1H }}
         run: python elpris_1h.py
