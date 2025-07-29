@@ -1,4 +1,4 @@
-name: Keep Repository Alive
+name: Keep Repository Active (No Push)
 
 on:
   schedule:
@@ -12,18 +12,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Update .keepalive file
-        run: |
-          echo "Last updated: $(date)" > .keepalive
-
-      - name: Commit and push
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
-        run: |
-          git config --global user.name "keepalive-bot"
-          git config --global user.email "keepalive@github"
-          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/Bonner79/elpris-updater.git
-          git add .keepalive
-          git commit -m "Keepalive update" || echo "No changes to commit"
-          git push origin HEAD:main
+      - name: Update timestamp (no push)
+        run: echo "Keepalive run at $(date)" > /dev/null
 
