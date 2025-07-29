@@ -17,9 +17,13 @@ jobs:
           echo "Last updated: $(date)" > .keepalive
 
       - name: Commit and push
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config --global user.name "keepalive-bot"
           git config --global user.email "keepalive@github"
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/Bonner79/elpris-updater.git
           git add .keepalive
           git commit -m "Keepalive update" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/Bonner79/elpris-updater.git HEAD:main
+          git push origin HEAD:main
+
