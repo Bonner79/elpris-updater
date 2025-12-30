@@ -3,34 +3,39 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 AREA = "SE3"
-BLOCK_SIZE = 1  # ändra till 1/2/4 osv
+BLOCK_SIZE = 1
 TZ = ZoneInfo("Europe/Stockholm")
 
-def fetch_prices_for_date(year: int, mm_dd: str):
+def fetch_hourly_prices_for_date(year: int, mm_dd: str) -> dict[int, float]:
     url = f"https://www.elprisetjustnu.se/api/v1/prices/{year}/{mm_dd}_{AREA}.json"
     res = requests.get(url, timeout=10)
     res.raise_for_status()
     data = res.json()
 
-    hour_prices = {}
+    buckets = {h: [] for h in range(24)}
     for entry in data:
         h = int(entry["time_start"][11:13])
-        hour_prices[h] = float(entry["SEK_per_kWh"])
-    return hour_prices
+        buckets[h].append(float(entry["SEK_per_kWh"]))
 
-def find_cheapest_consecutive_block(hour_prices: dict[int, float], block_size: int) -> list[int]:
-    # Hårt krav: måste ha 24 timmar, annars ska vi inte riskera fel styrning
+    # Kräver exakt 4 kvart per timme
+    for h in range(24):
+        if len(buckets[h]) != 4:
+            raise RuntimeError(f"Incomplete quarter data for hour {h}: {len(buckets[h])}/4")
+
+    # Medelpris per timme (4 lika långa intervall)
+    return {h: sum(buckets[h]) / 4.0 for h in range(24)}
+
+def find_cheapest_consecutive_block(hour_prices: dict[int, float], block_size: int):
     if set(hour_prices.keys()) != set(range(24)):
         missing = sorted(set(range(24)) - set(hour_prices.keys()))
-        raise RuntimeError(f"Price data incomplete. Missing hours: {missing}")
+        raise RuntimeError(f"Missing hours: {missing}")
 
     best_start = 0
     best_sum = float("inf")
 
     for start in range(0, 24 - block_size + 1):
         total = sum(hour_prices[start + i] for i in range(block_size))
-        # tie-breaker: tidigaste blocket om lika
-        if total < best_sum:
+        if total < best_sum:  # tie-breaker: tidigast vid lika
             best_sum = total
             best_start = start
 
@@ -40,7 +45,7 @@ now_local = datetime.now(TZ)
 year = now_local.year
 mm_dd = now_local.strftime("%m-%d")
 
-hour_prices = fetch_prices_for_date(year, mm_dd)
+hour_prices = fetch_hourly_prices_for_date(year, mm_dd)
 hours, best_sum = find_cheapest_consecutive_block(hour_prices, BLOCK_SIZE)
 
 payload = {
@@ -60,9 +65,7 @@ r.raise_for_status()
 gist = r.json()
 
 filename = list(gist["files"].keys())[0]
-content = json.dumps(payload, ensure_ascii=False)
-
-patch_body = {"files": {filename: {"content": content}}}
+patch_body = {"files": {filename: {"content": json.dumps(payload, ensure_ascii=False)}}}
 res = requests.patch(gist_url, headers=headers, json=patch_body, timeout=10)
 res.raise_for_status()
 
