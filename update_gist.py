@@ -10,7 +10,7 @@ TZ = ZoneInfo("Europe/Stockholm")
 
 # Sätt till exakt filnamn i din gist (rekommenderas).
 # Om du vill behålla "första filen i gisten", sätt GIST_FILENAME = "".
-GIST_FILENAME = "elpris_3h.json"
+GIST_FILENAME = "elpris_4h.json"
 
 
 def fetch_hourly_prices_for_date(year: int, mm_dd: str) -> dict[int, float]:
