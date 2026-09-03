@@ -2,7 +2,7 @@ name: Elpris 4H Updater
 
 on:
   schedule:
-    - cron: '10 0 * * *'  # Runs daily at 00:10 UTC
+    - cron: '20 15 * * *'  # 15:20 UTC = 17:20 svensk sommartid (16:20 vintertid), dvs efter att morgondagens priser publicerats
   workflow_dispatch:
 
 jobs:
