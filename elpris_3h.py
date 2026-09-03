@@ -1,68 +1,66 @@
 import os
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 AREA = "SE3"
 BLOCK_SIZE = 3
 TZ = ZoneInfo("Europe/Stockholm")
 
-# Sätt till exakt filnamn i din gist (rekommenderas).
-# Om du vill behålla "första filen i gisten", sätt GIST_FILENAME = "".
+# Exakt filnamn i gisten som ska uppdateras (en fil per blockstorlek).
 GIST_FILENAME = "elpris_3h.json"
 
 
 def fetch_hourly_prices_for_date(year: int, mm_dd: str) -> dict[int, float]:
     """
-    Hämtar elprisdata från elprisetjustnu och returnerar timpriser 0-23.
+    Hämtar elprisdata från elprisetjustnu och returnerar timpriser.
     Stödjer både:
       - 24 datapunkter (1 per timme)
       - 96 datapunkter (4 per timme/kvart) -> timmedel
+    Klarar även DST-dygn med 23 eller 25 timmar.
     """
     url = f"https://www.elprisetjustnu.se/api/v1/prices/{year}/{mm_dd}_{AREA}.json"
     res = requests.get(url, timeout=15)
     res.raise_for_status()
     data = res.json()
 
-    buckets: dict[int, list[float]] = {h: [] for h in range(24)}
+    buckets: dict[int, list[float]] = {}
     for entry in data:
         h = int(entry["time_start"][11:13])
-        buckets[h].append(float(entry["SEK_per_kWh"]))
+        buckets.setdefault(h, []).append(float(entry["SEK_per_kWh"]))
 
-    counts = sorted(set(len(buckets[h]) for h in range(24)))
+    if len(buckets) < 23:
+        raise RuntimeError(f"För få timmar i prisdatan: {sorted(buckets)}")
 
-    # Timprisformat (1 post per timme)
-    if counts == [1]:
-        return {h: buckets[h][0] for h in range(24)}
-
-    # Kvartsprisformat (4 poster per timme) -> timmedel
-    if counts == [4]:
-        return {h: sum(buckets[h]) / 4.0 for h in range(24)}
-
-    # Annars: ofullständig eller oväntad granularitet
-    raise RuntimeError(f"Unexpected data granularity per hour. Counts={counts}")
+    return {h: sum(v) / len(v) for h, v in buckets.items()}
 
 
 def find_cheapest_consecutive_block(hour_prices: dict[int, float], block_size: int) -> tuple[list[int], float]:
     """
-    Returnerar billigaste sammanhängande blocket (t.ex. 3 timmar) och dess summa.
+    Returnerar billigaste sammanhängande blocket och dess summa.
     Tie-breaker: tidigaste blocket vid lika summa.
     """
-    if set(hour_prices.keys()) != set(range(24)):
-        missing = sorted(set(range(24)) - set(hour_prices.keys()))
-        raise RuntimeError(f"Missing hours: {missing}")
+    hours = sorted(hour_prices)
+    if len(hours) < block_size:
+        raise RuntimeError(f"För få timmar för block_size={block_size}: {hours}")
 
-    best_start = 0
+    best_idx = None
     best_sum = float("inf")
 
-    for start in range(0, 24 - block_size + 1):
-        total = sum(hour_prices[start + i] for i in range(block_size))
+    for i in range(len(hours) - block_size + 1):
+        window = hours[i:i + block_size]
+        if window[-1] - window[0] != block_size - 1:
+            continue  # inte sammanhängande (t.ex. DST-hål)
+        total = sum(hour_prices[h] for h in window)
         if total < best_sum:
             best_sum = total
-            best_start = start
+            best_idx = i
 
-    return list(range(best_start, best_start + block_size)), best_sum
+    if best_idx is None:
+        raise RuntimeError("Hittade inget sammanhängande block")
+
+    return hours[best_idx:best_idx + block_size], best_sum
 
 
 def resolve_gist_filename(gist_json: dict) -> str:
@@ -78,10 +76,12 @@ def resolve_gist_filename(gist_json: dict) -> str:
 
 def main():
     now_local = datetime.now(TZ)
-    year = now_local.year
-    mm_dd = now_local.strftime("%m-%d")
 
-    hour_prices = fetch_hourly_prices_for_date(year, mm_dd)
+    # Day-ahead: vi räknar på MORGONDAGENS priser så att planen ligger
+    # i gisten före midnatt, när Shelly hämtar den 00:15.
+    target = now_local + timedelta(days=1)
+
+    hour_prices = fetch_hourly_prices_for_date(target.year, target.strftime("%m-%d"))
     hours, best_sum = find_cheapest_consecutive_block(hour_prices, BLOCK_SIZE)
 
     payload = {
@@ -89,7 +89,7 @@ def main():
         "block_size": BLOCK_SIZE,
         "best_sum": round(best_sum, 6),
         "updated": now_local.strftime("%Y-%m-%d %H:%M:%S %Z"),
-        "date": now_local.strftime("%Y-%m-%d"),
+        "date": target.strftime("%Y-%m-%d"),
         "area": AREA
     }
 
