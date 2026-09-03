@@ -3,6 +3,7 @@ name: Elpris 2H Updater
 on:
   schedule:
     - cron: '10 15 * * *'  # 15:10 UTC = 17:10 svensk sommartid (16:10 vintertid), dvs efter att morgondagens priser publicerats
+    - cron: '10 19 * * *'  # retry 19:10 UTC om eftermiddagskorningen missade (t.ex. priser inte publicerade)
   workflow_dispatch:
 
 jobs:
