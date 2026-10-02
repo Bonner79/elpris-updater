@@ -1,17 +1,34 @@
-name: Keep Repository Active (No Push)
+name: Keep Repository Active
 
 on:
   schedule:
-    - cron: '0 2 * * 0'  # Kör varje söndag kl 02:00
+    - cron: '41 3 * * 0'  # söndagar 05:41 sommartid / 04:41 vintertid
   workflow_dispatch:
 
 jobs:
   keepalive:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
-      - name: Update timestamp (no push)
-        run: echo "Keepalive run at $(date)" > /dev/null
-
+      - name: Committa tidsstämpel om repot varit stilla länge
+        run: |
+          set -euo pipefail
+          age=$(( ( $(date +%s) - $(git log -1 --format=%ct) ) / 86400 ))
+          echo "Senaste commit: $age dagar sedan."
+          if [ "$age" -lt 45 ]; then
+            echo "Under 45 dagar – ingen åtgärd behövs."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p .github
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive
+          git add .github/keepalive
+          git commit -m "chore: keepalive"
+          git push
+          echo "Committade keepalive-markör."
