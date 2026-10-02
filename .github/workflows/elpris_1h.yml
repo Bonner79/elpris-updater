@@ -2,21 +2,28 @@ name: Elpris 1H Updater
 
 on:
   schedule:
-    - cron: '5 15 * * *'  # 15:05 UTC = 17:05 svensk sommartid (16:05 vintertid), dvs efter att morgondagens priser publicerats
-    - cron: '5 19 * * *'  # retry 19:05 UTC om eftermiddagskorningen missade (t.ex. priser inte publicerade)
+    # Alla tider i UTC. GitHub-cron följer inte sommartid.
+    # Dagen-före-priserna publiceras 12:55 CET/CEST, men kan bli senare.
+    # Fyra försök så att en försenad eller överhoppad körning inte sänker dygnet.
+    - cron: '35 12 * * *'  # 14:35 sommartid / 13:35 vintertid – normalfallet
+    - cron: '35 15 * * *'  # 17:35 / 16:35 – täcker försenad publicering
+    - cron: '35 19 * * *'  # 21:35 / 20:35
+    - cron: '35 21 * * *'  # 23:35 / 22:35 – sista chansen före midnatt
   workflow_dispatch:
 
 jobs:
   run-script:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.x'
+          python-version: '3.13'
 
       - name: Install requests
         run: pip install requests
