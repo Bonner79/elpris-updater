@@ -7,10 +7,18 @@ const source = fs.readFileSync(path.join(__dirname, '..', 'shelly_nibe.js'), 'ut
 const BASE = Date.parse('2026-10-11T12:00:00+02:00') / 1000;
 const DAY = Date.parse('2026-10-11T00:00:00+02:00') / 1000;
 let passed = 0;
+Error.stackTraceLimit = 200;
+// The real Shelly interpreter has a very shallow call stack. Count nested SCRIPT frames
+// whenever the script calls into the mocked Shelly API and keep the maximum.
+const SCRIPT_FRAME = /at (applyNext|reconcile|tick|nowUTC|uptime|integer|desired|validPlan|validWindow|overlap|installPlan|clockReady|configSafe|relayDone|httpDone|fetchPlan|requestURL|loadCache|boost|activeEnd|say|cacheAvailable|permittedURL) /;
+function scriptDepth() {
+  return new Error().stack.split('\n').filter(l => SCRIPT_FRAME.test(l)).length;
+}
 function test(name, fn) { fn(); passed++; console.log('PASS', name); }
 function rig() {
   const r = { now: BASE, up: 100, outputs: [false,false,false], expiry: [0,0,0],
-    calls: [], pending: [], cache: {}, failOff: -1, http: null, callbacks: [] };
+    calls: [], pending: [], cache: {}, failOff: -1, http: null, callbacks: [], maxDepth: 0 };
+  const probe = () => { r.maxDepth = Math.max(r.maxDepth, scriptDepth()); };
   r.cfg = [0,1,2].map(id => ({id, in_mode:'detached', initial_state:'off', auto_on:false, auto_off:true, auto_off_delay:120}));
   const context = {
     print(){}, Date, JSON, Math, String, Number, Array,
@@ -18,12 +26,14 @@ function rig() {
     Script: { storage: { getItem(k){return r.cache[k] || null;}, setItem(k,v){r.cache[k]=v;} } },
     Shelly: {
       getComponentStatus(key) {
+        probe();
         if (key==='sys') return {unixtime:r.now, uptime:r.up};
         const i=Number(key.split(':')[1]);
         return {output:r.outputs[i]};
       },
-      getComponentConfig(key) { return r.cfg[Number(key.split(':')[1])]; },
+      getComponentConfig(key) { probe(); return r.cfg[Number(key.split(':')[1])]; },
       call(method, params, cb) {
+        probe();
         r.calls.push({method, ...params});
         if (method === 'Switch.Set') {
           const error = params.on === false && params.id === r.failOff;
@@ -88,4 +98,11 @@ test('no midnight fallback and no valid future plan today',()=>{
 });
 test('pause releases contacts; resume restores only valid periods',()=>{let r=rig();r.load(payload());r.live();r.run('pauseControl();tick()');assert.equal(r.outputs[2],false);r.run('resumeControl();tick()');assert.equal(r.outputs[2],true);});
 test('redirect cannot send device to arbitrary host',()=>{let r=rig();assert.equal(r.run('permittedURL("http://192.168.1.1")'),false);});
+test('call stack stays shallow (Shelly interpreter limit)',()=>{
+  // Idle case: nothing to switch, all six steps run (this overflowed on the real device).
+  let a=rig();a.live();a.advance(30);
+  // Active case: SG window with renewals, plus manual luxury hand-over.
+  let b=rig();b.load(payload());b.run('CONFIG.allow_luxury=true');b.live();for(let i=0;i<4;i++)b.advance(30);b.run('boost(60);tick()');
+  assert(a.maxDepth<=7,'idle depth '+a.maxDepth);assert(b.maxDepth<=7,'active depth '+b.maxDepth);
+});
 console.log('TOTAL:',passed,'controller logic tests passed; hardware not tested.');
