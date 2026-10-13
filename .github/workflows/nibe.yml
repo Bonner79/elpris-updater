@@ -1,10 +1,9 @@
 name: NIBE price plan
 on:
   workflow_dispatch:
-  # Schedule is enabled after the first successful manual run:
-  # schedule:
-  #   # UTC. Several attempts; output contains both today and tomorrow.
-  #   - cron: '23 0,5,11,13,15,17,19,21 * * *'
+  schedule:
+    # UTC. Several attempts; output contains both today and tomorrow.
+    - cron: '23 0,5,11,13,15,17,19,21 * * *'
 permissions:
   contents: read
 concurrency:
