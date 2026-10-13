@@ -31,3 +31,13 @@ jobs:
           NIBE_GIST_ID: ${{ secrets.NIBE_GIST_ID }}
           NIBE_GIST_TOKEN: ${{ secrets.NIBE_GIST_TOKEN }}
         run: python nibe/nibe_updater.py --publish --out /tmp/nibe_plan.json
+      - name: Send plan to phone (ntfy)
+        continue-on-error: true
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$(date -u +%H)" = "17" ]; then
+            python nibe/notify.py /tmp/nibe_plan.json
+          else
+            echo "Not the daily notification run."
+          fi
