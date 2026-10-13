@@ -9,7 +9,7 @@
   },
   "heat": {
     "enabled": false,
-    "duration_minutes": 180,
+    "duration_minutes": 45,
     "start": "00:00",
     "end": "24:00",
     "avoid": [["19:00", "22:00"]],
