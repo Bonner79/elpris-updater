@@ -193,33 +193,38 @@ function relayDone(res, code, error) {
   applyNext();
 }
 function applyNext() {
-  if (step >= 6) { busy = false; return; }
-  let phase = step < 3 ? 0 : 1;
-  let id = step % 3;
-  step++;
-  let s = Shelly.getComponentStatus("switch:" + id);
-  let n = nowUTC();
-  let wanted = job[id] > n && n > 0;
-  // Phase 0: OPEN unwanted contacts before phase 1 can close anything.
-  if (phase === 0) {
-    if (!wanted && s && s.output === true) {
-      commandId = id; commandOn = false;
-      Shelly.call("Switch.Set", { id: id, on: false }, relayDone); return;
+  // Iterative on purpose: the Shelly interpreter has a very shallow call stack.
+  while (step < 6) {
+    let phase = step < 3 ? 0 : 1;
+    let id = step % 3;
+    step++;
+    let s = Shelly.getComponentStatus("switch:" + id);
+    let n = nowUTC();
+    let wanted = job[id] > n && n > 0;
+    if (phase === 0) {
+      // Phase 0: OPEN unwanted contacts before phase 1 can close anything.
+      if (!wanted && s && s.output === true) {
+        commandId = id; commandOn = false;
+        Shelly.call("Switch.Set", { id: id, on: false }, relayDone);
+        return;
+      }
+    } else if (wanted && !hadError && s && !(s.errors && s.errors.length)) {
+      let blocked = false;
+      if (id === 1 || id === 2) {
+        let other = Shelly.getComponentStatus("switch:" + (id === 1 ? 2 : 1));
+        blocked = !other || other.output !== false;
+      }
+      if (!blocked && (s.output === false || uptime() >= renewAt[id])) {
+        let lease = Math.min(CONFIG.lease_seconds, job[id] - n);
+        if (lease > 0) {
+          commandId = id; commandOn = true;
+          Shelly.call("Switch.Set", { id: id, on: true, toggle_after: lease }, relayDone);
+          return;
+        }
+      }
     }
-    applyNext(); return;
   }
-  if (!wanted || hadError || !s || (s.errors && s.errors.length)) { applyNext(); return; }
-  if (id === 1 || id === 2) {
-    let other = Shelly.getComponentStatus("switch:" + (id === 1 ? 2 : 1));
-    if (!other || other.output !== false) { applyNext(); return; }
-  }
-  if (s.output === false || uptime() >= renewAt[id]) {
-    let lease = Math.min(CONFIG.lease_seconds, job[id] - n);
-    if (lease <= 0) { applyNext(); return; }
-    commandId = id; commandOn = true;
-    Shelly.call("Switch.Set", { id: id, on: true, toggle_after: lease }, relayDone); return;
-  }
-  applyNext();
+  busy = false;
 }
 function reconcile(t) {
   if (busy) return;
