@@ -22,7 +22,10 @@ def records(day, step=900, fn=None):
 
 
 def config():
-    return json.loads((Path(__file__).resolve().parents[1] / "config.json").read_text())
+    cfg = json.loads((Path(__file__).resolve().parents[1] / "config.json").read_text())
+    # Tests assume a 120 minute water window, independent of the live tuning.
+    cfg["water"]["duration_minutes"] = 120
+    return cfg
 
 
 class PlannerTests(unittest.TestCase):
