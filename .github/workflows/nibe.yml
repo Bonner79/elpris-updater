@@ -1,0 +1,34 @@
+name: NIBE price plan
+on:
+  workflow_dispatch:
+  # Schedule is enabled after the first successful manual run:
+  # schedule:
+  #   # UTC. Several attempts; output contains both today and tomorrow.
+  #   - cron: '23 0,5,11,13,15,17,19,21 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: nibe-plan-writer
+  cancel-in-progress: false
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Install dependency
+        run: python -m pip install 'requests>=2.32,<3'
+      - name: Test planner
+        run: python -m unittest discover -s nibe/tests -p 'test_*.py' -v
+      - name: Test controller logic (mock, not hardware)
+        run: node nibe/tests/test_shelly.js
+      - name: Publish NIBE plan only
+        env:
+          NIBE_GIST_ID: ${{ secrets.NIBE_GIST_ID }}
+          NIBE_GIST_TOKEN: ${{ secrets.NIBE_GIST_TOKEN }}
+        run: python nibe/nibe_updater.py --publish --out /tmp/nibe_plan.json
