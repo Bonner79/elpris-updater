@@ -1,6 +1,6 @@
 {
   "area": "SE3",
-  "selection_resolution_minutes": 60,
+  "selection_resolution_minutes": 15,
   "water": {
     "enabled": true,
     "duration_minutes": 120,
