@@ -3,7 +3,7 @@
   "selection_resolution_minutes": 15,
   "water": {
     "enabled": true,
-    "duration_minutes": 120,
+    "duration_minutes": 60,
     "start": "08:00",
     "end": "18:00"
   },
