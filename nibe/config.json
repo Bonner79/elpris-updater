@@ -1,0 +1,20 @@
+{
+  "area": "SE3",
+  "selection_resolution_minutes": 60,
+  "water": {
+    "enabled": true,
+    "duration_minutes": 120,
+    "start": "08:00",
+    "end": "18:00"
+  },
+  "heat": {
+    "enabled": false,
+    "duration_minutes": 180,
+    "start": "00:00",
+    "end": "24:00",
+    "avoid": [["19:00", "22:00"]],
+    "outdoor_mean_below_c": 15.0,
+    "latitude": null,
+    "longitude": null
+  }
+}
